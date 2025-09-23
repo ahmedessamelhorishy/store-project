@@ -71,7 +71,7 @@ pipeline {
       when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
       steps {
         script {
-          def exists = sh(script: "kubectl get deploy order-service -n ${K8S_NAMESPACE} --ignore-not-found", returnStatus: true) == 0
+          def exists = sh(script: """ kubectl get deploy order-service -n ${K8S_NAMESPACE} --ignore-not-found && kubectl get deploy product-service -n ${K8S_NAMESPACE} --ignore-not-found""", returnStatus: true) == 0
           if (!exists) {
             echo "First-time deployment detected. Applying aks-store-all-in-one.yaml..."
             sh '''
