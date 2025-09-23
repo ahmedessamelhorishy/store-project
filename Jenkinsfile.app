@@ -25,7 +25,6 @@ pipeline {
     }
 
     stage('Azure login + AKS context') {
-      when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
       steps {
         withCredentials([usernamePassword(credentialsId: 'store-sp', usernameVariable: 'AZ_CLIENT_ID', passwordVariable: 'AZ_CLIENT_SECRET')]) {
           sh '''
@@ -43,28 +42,27 @@ pipeline {
       when { expression { env.COMMIT_MSG.contains('[seed]') } }
       steps {
         sh '''
-          # Dual-tag imports: versioned + latest
-          az acr import --name "$ACR_NAME" \
-            --source docker.io/library/rabbitmq:3.12-management \
-            --image rabbitmq:3.12-management \
-            --image rabbitmq:latest
+          import_if_missing() {
+            repo=$1
+            tag=$2
+            source=$3
 
-          az acr import --name "$ACR_NAME" \
-            --source docker.io/library/mongo:6 \
-            --image mongo:6 \
-            --image mongo:latest
+            if ! az acr repository show-tags --name "$ACR_NAME" --repository "$repo" | grep -q "$tag"; then
+              echo "Importing $repo:$tag from $source"
+              az acr import --name "$ACR_NAME" \
+                --source "$source" \
+                --image "$repo:$tag" \
+                --image "$repo:latest"
+            else
+              echo "$repo:$tag already exists. Skipping import."
+            fi
+          }
 
-          az acr import --name "$ACR_NAME" \
-            --source ghcr.io/azure-samples/aks-store-demo/product-service:latest \
-            --image product-service:latest
-
-          az acr import --name "$ACR_NAME" \
-            --source ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest \
-            --image virtual-customer:latest
-
-          az acr import --name "$ACR_NAME" \
-            --source ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest \
-            --image virtual-worker:latest
+          import_if_missing rabbitmq 3.12-management docker.io/library/rabbitmq:3.12-management
+          import_if_missing mongo 6 docker.io/library/mongo:6
+          import_if_missing product-service latest ghcr.io/azure-samples/aks-store-demo/product-service:latest
+          import_if_missing virtual-customer latest ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest
+          import_if_missing virtual-worker latest ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest
         '''
       }
     }
@@ -73,7 +71,6 @@ pipeline {
       when { expression { env.COMMIT_MSG.contains('[seed]') } }
       steps {
         sh '''
-          # Deployments (will pick up latest automatically)
           kubectl -n "${K8S_NAMESPACE}" set image deploy/product-service \
             product-service="${ACR_LOGIN}/product-service:latest" || true
 
@@ -83,7 +80,6 @@ pipeline {
           kubectl -n "${K8S_NAMESPACE}" set image deploy/virtual-worker \
             virtual-worker="${ACR_LOGIN}/virtual-worker:latest" || true
 
-          # StatefulSets (force restart to pick up new digest)
           kubectl -n "${K8S_NAMESPACE}" set image statefulset/rabbitmq \
             rabbitmq="${ACR_LOGIN}/rabbitmq:latest" || true
           kubectl -n "${K8S_NAMESPACE}" rollout restart statefulset/rabbitmq || true
@@ -92,7 +88,6 @@ pipeline {
             mongodb="${ACR_LOGIN}/mongo:latest" || true
           kubectl -n "${K8S_NAMESPACE}" rollout restart statefulset/mongodb || true
 
-          # Wait for rollouts
           kubectl -n "${K8S_NAMESPACE}" rollout status statefulset/rabbitmq || true
           kubectl -n "${K8S_NAMESPACE}" rollout status statefulset/mongodb || true
           kubectl -n "${K8S_NAMESPACE}" rollout status deploy/product-service || true
@@ -106,25 +101,21 @@ pipeline {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
       steps {
         sh '''
-          # Order-service
           az acr build --registry "$ACR_NAME" \
             --image order-service:${IMAGE_TAG} \
             --image order-service:latest \
             ./src/order-service
 
-          # Store-front
           az acr build --registry "$ACR_NAME" \
             --image store-front:${IMAGE_TAG} \
             --image store-front:latest \
             ./src/store-front
 
-          # Store-admin
           az acr build --registry "$ACR_NAME" \
             --image store-admin:${IMAGE_TAG} \
             --image store-admin:latest \
             ./src/store-admin 
 
-          # Makeline-service
           az acr build --registry "$ACR_NAME" \
             --image makeline-service:${IMAGE_TAG} \
             --image makeline-service:latest \
