@@ -32,7 +32,6 @@ pipeline {
             az login --service-principal -u "$AZ_CLIENT_ID" -p "$AZ_CLIENT_SECRET" --tenant "$AZURE_TENANT"
             az account set --subscription "$AZURE_SUBSCRIPTION"
             az aks get-credentials -g "$AKS_RG" -n "$AKS_NAME" --overwrite-existing
-            kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           '''
         }
       }
@@ -70,18 +69,11 @@ pipeline {
     stage('First-time deploy check') {
       when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
       steps {
-        script {
-          def exists = sh(script: """ kubectl get deploy order-service -n ${K8S_NAMESPACE} --ignore-not-found && kubectl get deploy product-service -n ${K8S_NAMESPACE} --ignore-not-found""", returnStatus: true) == 0
-          if (!exists) {
-            echo "First-time deployment detected. Applying aks-store-all-in-one.yaml..."
-            sh '''
-              kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-              kubectl apply -n "${K8S_NAMESPACE}" -f aks-store-all-in-one.yaml
-            '''
-          } else {
-            echo "Deployments already exist; skipping kubectl apply."
-          }
-        }
+        sh '''
+          echo "Applying aks-store-all-in-one.yaml to ensure all workloads exist..."
+          kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -n "${K8S_NAMESPACE}" -f aks-store-all-in-one.yaml
+        '''
       }
     }
 
@@ -132,7 +124,7 @@ pipeline {
           az acr build --registry "$ACR_NAME" \
             --image store-admin:${IMAGE_TAG} \
             --image store-admin:latest \
-            ./src/store-admin 
+            ./src/store-admin
 
           az acr build --registry "$ACR_NAME" \
             --image makeline-service:${IMAGE_TAG} \
