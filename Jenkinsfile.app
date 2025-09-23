@@ -67,6 +67,24 @@ pipeline {
       }
     }
 
+    stage('First-time deploy check') {
+      when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
+      steps {
+        script {
+          def exists = sh(script: "kubectl get deploy order-service -n ${K8S_NAMESPACE} --ignore-not-found", returnStatus: true) == 0
+          if (!exists) {
+            echo "First-time deployment detected. Applying aks-store-all-in-one.yaml..."
+            sh '''
+              kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+              kubectl apply -n "${K8S_NAMESPACE}" -f aks-store-all-in-one.yaml
+            '''
+          } else {
+            echo "Deployments already exist; skipping kubectl apply."
+          }
+        }
+      }
+    }
+
     stage('Update third-party workloads') {
       when { expression { env.COMMIT_MSG.contains('[seed]') } }
       steps {
@@ -121,24 +139,6 @@ pipeline {
             --image makeline-service:latest \
             ./src/makeline-service
         '''
-      }
-    }
-
-    stage('First-time deploy check') {
-      when { expression { env.COMMIT_MSG.contains('[app]') } }
-      steps {
-        script {
-          def exists = sh(script: "kubectl get deploy order-service -n ${K8S_NAMESPACE} --ignore-not-found", returnStatus: true) == 0
-          if (!exists) {
-            echo "First-time deployment detected. Applying aks-store-all-in-one.yaml..."
-            sh '''
-              kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-              kubectl apply -n "${K8S_NAMESPACE}" -f aks-store-all-in-one.yaml
-            '''
-          } else {
-            echo "Deployments already exist; skipping kubectl apply."
-          }
-        }
       }
     }
 
