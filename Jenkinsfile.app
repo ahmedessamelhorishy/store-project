@@ -115,7 +115,8 @@ pipeline {
         ]) {
         sh '''
           az acr login --name "$ACR_NAME"
-
+          export DOCKER_BUILDKIT=0
+          
           # Order-service
           docker build -t ${ACR_LOGIN}/order-service:${IMAGE_TAG} ./src/order-service
           docker tag ${ACR_LOGIN}/order-service:${IMAGE_TAG} ${ACR_LOGIN}/order-service:latest
