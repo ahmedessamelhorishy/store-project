@@ -66,12 +66,11 @@ pipeline {
       }
     }
 
-    stage('First-time deploy check') {
+    stage('Apply all workloads (idempotent)') {
       when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
       steps {
         sh '''
           echo "Applying aks-store-all-in-one.yaml to ensure all workloads exist..."
-          kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -n "${K8S_NAMESPACE}" -f aks-store-all-in-one.yaml
         '''
       }
@@ -107,29 +106,35 @@ pipeline {
       }
     }
 
-    stage('Build first-party images with ACR Tasks') {
+    stage('Build first-party images (local Docker)') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
       steps {
         sh '''
-          az acr build --registry "$ACR_NAME" \
-            --image order-service:${IMAGE_TAG} \
-            --image order-service:latest \
-            ./src/order-service
+          az acr login --name "$ACR_NAME"
 
-          az acr build --registry "$ACR_NAME" \
-            --image store-front:${IMAGE_TAG} \
-            --image store-front:latest \
-            ./src/store-front
+          # Order-service
+          docker build -t ${ACR_LOGIN}/order-service:${IMAGE_TAG} ./src/order-service
+          docker tag ${ACR_LOGIN}/order-service:${IMAGE_TAG} ${ACR_LOGIN}/order-service:latest
+          docker push ${ACR_LOGIN}/order-service:${IMAGE_TAG}
+          docker push ${ACR_LOGIN}/order-service:latest
 
-          az acr build --registry "$ACR_NAME" \
-            --image store-admin:${IMAGE_TAG} \
-            --image store-admin:latest \
-            ./src/store-admin
+          # Store-front
+          docker build -t ${ACR_LOGIN}/store-front:${IMAGE_TAG} ./src/store-front
+          docker tag ${ACR_LOGIN}/store-front:${IMAGE_TAG} ${ACR_LOGIN}/store-front:latest
+          docker push ${ACR_LOGIN}/store-front:${IMAGE_TAG}
+          docker push ${ACR_LOGIN}/store-front:latest
 
-          az acr build --registry "$ACR_NAME" \
-            --image makeline-service:${IMAGE_TAG} \
-            --image makeline-service:latest \
-            ./src/makeline-service
+          # Store-admin
+          docker build -t ${ACR_LOGIN}/store-admin:${IMAGE_TAG} ./src/store-admin
+          docker tag ${ACR_LOGIN}/store-admin:${IMAGE_TAG} ${ACR_LOGIN}/store-admin:latest
+          docker push ${ACR_LOGIN}/store-admin:${IMAGE_TAG}
+          docker push ${ACR_LOGIN}/store-admin:latest
+
+          # Makeline-service
+          docker build -t ${ACR_LOGIN}/makeline-service:${IMAGE_TAG} ./src/makeline-service
+          docker tag ${ACR_LOGIN}/makeline-service:${IMAGE_TAG} ${ACR_LOGIN}/makeline-service:latest
+          docker push ${ACR_LOGIN}/makeline-service:${IMAGE_TAG}
+          docker push ${ACR_LOGIN}/makeline-service:latest
         '''
       }
     }
