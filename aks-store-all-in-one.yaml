@@ -23,11 +23,11 @@ spec:
               name: mongodb
           resources:
             requests:
-              cpu: 5m
-              memory: 512Mi
+              cpu: 50m
+              memory: 2048Mi
             limits:
-              cpu: 25m
-              memory: 1024Mi
+              cpu: 100m
+              memory: 4096Mi
           livenessProbe:
             exec:
               command:
