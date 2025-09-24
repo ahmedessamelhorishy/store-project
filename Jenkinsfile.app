@@ -32,7 +32,7 @@ pipeline {
             az login --service-principal -u "$AZ_CLIENT_ID" -p "$AZ_CLIENT_SECRET" --tenant "$AZURE_TENANT"
             az account set --subscription "$AZURE_SUBSCRIPTION"
             az aks get-credentials -g "$AKS_RG" -n "$AKS_NAME" --overwrite-existing
-            kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+			kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           '''
         }
       }
@@ -107,9 +107,12 @@ pipeline {
       }
     }
 
-    stage('Build first-party images with Docker then push to ACR') {
+	stage('Build first-party images with Docker then push to ACR') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
       steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'docker-account', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
+        ]) {
         sh '''
           az acr login --name "$ACR_NAME"
 
@@ -139,6 +142,7 @@ pipeline {
         '''
       }
     }
+  }
 
     stage('Roll deployments to new images') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
