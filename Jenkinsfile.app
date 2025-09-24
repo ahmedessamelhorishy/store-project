@@ -66,7 +66,7 @@ pipeline {
       }
     }
 
-    stage('Apply all workloads (idempotent)') {
+    stage('First-time deploy check') {
       when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
       steps {
         sh '''
@@ -106,7 +106,7 @@ pipeline {
       }
     }
 
-    stage('Build first-party images (local Docker)') {
+    stage('Build first-party images with Docker then push to ACR') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
       steps {
         sh '''
