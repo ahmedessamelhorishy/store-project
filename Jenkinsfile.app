@@ -32,6 +32,7 @@ pipeline {
             az login --service-principal -u "$AZ_CLIENT_ID" -p "$AZ_CLIENT_SECRET" --tenant "$AZURE_TENANT"
             az account set --subscription "$AZURE_SUBSCRIPTION"
             az aks get-credentials -g "$AKS_RG" -n "$AKS_NAME" --overwrite-existing
+            kubectl create ns "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
           '''
         }
       }
