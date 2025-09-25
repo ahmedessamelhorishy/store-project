@@ -54,9 +54,7 @@ pipeline {
               az acr import --name "$ACR_NAME" \
                 --source "$source" \
                 --image "$repo:$tag" \
-                --image "$repo:latest" \
-                --username "$DOCKER_USER" \
-                --password "$DOCKER_PASS"
+                --image "$repo:latest" 
             else
               echo "$repo:$tag already exists. Skipping import."
             fi
