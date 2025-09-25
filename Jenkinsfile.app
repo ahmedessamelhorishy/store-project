@@ -67,9 +67,9 @@ pipeline {
           import_if_missing product-service latest ghcr.io/azure-samples/aks-store-demo/product-service:latest
           import_if_missing virtual-customer latest ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest
           import_if_missing virtual-worker latest ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest
-		      import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
-          import_if_missing node 22.14-alpine docker.io/library/node:22.14-alpine 
-          import_if_missing golang 1.23-alpine docker.io/library/golang:1.23-alpine
+		      import_if_missing node 18.20.5-alpine docker.io/node:18.20.5-alpine
+          import_if_missing node 22.14-alpine docker.io/node:22.14-alpine 
+          import_if_missing golang 1.23-alpine docker.io/golang:1.23-alpine
         '''
       }
     }
