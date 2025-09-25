@@ -54,7 +54,9 @@ pipeline {
               az acr import --name "$ACR_NAME" \
                 --source "$source" \
                 --image "$repo:$tag" \
-                --image "$repo:latest"
+                --image "$repo:latest" \
+                --username "$DOCKER_USER" \
+                --password "$DOCKER_PASS"
             else
               echo "$repo:$tag already exists. Skipping import."
             fi
@@ -65,7 +67,7 @@ pipeline {
           import_if_missing product-service latest ghcr.io/azure-samples/aks-store-demo/product-service:latest
           import_if_missing virtual-customer latest ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest
           import_if_missing virtual-worker latest ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest
-		  import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
+		      import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
           import_if_missing node 22.14-alpine docker.io/library/node:22.14-alpine 
           import_if_missing golang 1.23-alpine docker.io/library/golang:1.23-alpine
         '''
