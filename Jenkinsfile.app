@@ -63,6 +63,9 @@ pipeline {
           import_if_missing product-service latest ghcr.io/azure-samples/aks-store-demo/product-service:latest
           import_if_missing virtual-customer latest ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest
           import_if_missing virtual-worker latest ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest
+		      import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
+          import_if_missing node 22.14-alpine docker.io/library/node:22.14-alpine 
+          import_if_missing golang 1.23-alpine docker.io/library/golang:1.23-alpine
         '''
       }
     }
@@ -110,13 +113,9 @@ pipeline {
 	stage('Build first-party images with Docker then push to ACR') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }
       steps {
-        withCredentials([
-          usernamePassword(credentialsId: 'docker-account', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-        ]) {
         sh '''
           az acr login --name "$ACR_NAME"
-          export DOCKER_BUILDKIT=0
-          
+
           # Order-service
           docker build -t ${ACR_LOGIN}/order-service:${IMAGE_TAG} ./src/order-service
           docker tag ${ACR_LOGIN}/order-service:${IMAGE_TAG} ${ACR_LOGIN}/order-service:latest
@@ -143,7 +142,6 @@ pipeline {
         '''
       }
     }
-  }
 
     stage('Roll deployments to new images') {
       when { expression { env.COMMIT_MSG.contains('[app]') } }

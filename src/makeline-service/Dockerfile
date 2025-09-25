@@ -1,5 +1,5 @@
 # Use an official Golang runtime as a parent image
-FROM golang:1.23-alpine AS builder
+FROM storeimagesacr.azurecr.io/golang:1.23-alpine AS builder
 
 # Set the working directory to /app
 WORKDIR /app
