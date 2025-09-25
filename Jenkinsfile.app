@@ -37,10 +37,12 @@ pipeline {
         }
       }
     }
+	
 
     stage('Seed third-party images') {
       when { expression { env.COMMIT_MSG.contains('[seed]') } }
       steps {
+	    withCredentials([usernamePassword(credentialsId: 'docker-account', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
         sh '''
           import_if_missing() {
             repo=$1
@@ -63,12 +65,13 @@ pipeline {
           import_if_missing product-service latest ghcr.io/azure-samples/aks-store-demo/product-service:latest
           import_if_missing virtual-customer latest ghcr.io/azure-samples/aks-store-demo/virtual-customer:latest
           import_if_missing virtual-worker latest ghcr.io/azure-samples/aks-store-demo/virtual-worker:latest
-		      import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
+		  import_if_missing node 18.20.5-alpine docker.io/library/node:18.20.5-alpine
           import_if_missing node 22.14-alpine docker.io/library/node:22.14-alpine 
           import_if_missing golang 1.23-alpine docker.io/library/golang:1.23-alpine
         '''
       }
     }
+  }
 
     stage('First-time deploy check') {
       when { expression { env.COMMIT_MSG.contains('[app]') || env.COMMIT_MSG.contains('[seed]') } }
@@ -167,3 +170,4 @@ pipeline {
     success { echo "Pipeline complete. Tag: ${env.IMAGE_TAG}" }
   }
 }
+
